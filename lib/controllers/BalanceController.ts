@@ -19,15 +19,20 @@ export class BalanceController {
       .then((user) => {
         if (!user) return res.status(404).send();
 
-        this.Balance(user.wallet)
-          .then((data: any) => {
-            let balance = parseFloat(data.balance) / 10000000000000000;
-            balance = balance / 100;
-            return res.status(200).json({ balance });
-          }).catch((err) => {
-            return res.status(400).send();
-          })
-          
+        if (user.wallet) {
+
+          this.Balance(user.wallet)
+            .then((data: any) => {
+              let balance = parseFloat(data.balance) / 10000000000000000;
+              balance = balance / 100;
+              return res.status(200).json({ balance });
+            }).catch((err) => {
+              return res.status(400).send();
+            })
+        } else {
+          return res.status(200).json({ 0 });
+        }
+
       }).catch((err) => {
         return res.status(500).json({
           success: false,
@@ -41,25 +46,25 @@ export class BalanceController {
       // https://minter-node-1.testnet.minter.network
       // https://testnet.node-api.minter.network
       axios.get(`https://minter-node-1.testnet.minter.network/address?address=${wallet}`)
-      .then(({ data }) => {
-        // 10.00 0000000000000000
-        const balance = data.result.balance.MNT;
-        resolve({ balance });
-      }).catch((err) => reject({ msg: err.message }));
+        .then(({ data }) => {
+          // 10.00 0000000000000000
+          const balance = data.result.balance.MNT;
+          resolve({ balance });
+        }).catch((err) => reject({ msg: err.message }));
     });
   }
 
   public SendCoins = (req: Request, res: Response) => {
     const walletAddrTo = req.body.wallet;
-              
+
     const walletFrom = MinterWallet.walletFromMnemonic(process.env.MINTER_MNEMONIC);
     const walletAddrFrom = walletFrom.getAddressString();
-    
-    
+
+
     let tr_addr = walletAddrTo;
     let tr_coin = 'MNT';
     let tr_amount = req.body.amount;
-    
+
     let txParams = {
       privateKey: walletFrom.getPrivateKeyString(),
       nonce: minterAPI.getNonce(walletAddrFrom),
@@ -73,7 +78,7 @@ export class BalanceController {
       gasCoin: 'MNT',
       gasPrice: 1
     }
-    
+
     minterAPI.postTx(txParams).then(() => {
       return res.status(200).json({});
     }).catch((err: any) => {
@@ -84,7 +89,7 @@ export class BalanceController {
   public Payment = (req: Request, res: Response) => {
     const apiKey = 'y0XaMQxwEFjL8byhNFuCTs1qCbOEGlOzufb3oHcc';
     const apiSecret = 'Hu3JQKojVcS0LAXvenLyZuj908Hpiohj0XKNHtcM';
-    
+
     const apiPath = '/v3/auth/merchant/deposit';
     // const apiPath = 'v3/auth/deposit/details';
 
@@ -99,10 +104,10 @@ export class BalanceController {
     };
 
     let signature = `${apiPath}${nonce}${JSON.stringify(body)}`
- 
+
     const sig = crypto.createHmac('sha384', apiSecret).update(signature)
     const shex = sig.digest('hex');
-    
+
     request.post(`https://api.kuna.io${apiPath}`, {
       headers: {
         'kun-nonce': nonce,
